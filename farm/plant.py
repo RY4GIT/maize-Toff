@@ -270,3 +270,30 @@ class Crop(Plant):
         yield_kg_ha = Y_MAX * (1 - dstr_memb)
 
         return mstr_memb, dstr_memb, yield_kg_ha
+
+
+class StaticCrop(Crop):
+        """ Creates a StaticCrop class that inherits from Crop and overrides the calc_kc method.
+
+        Usage: crop = StaticCrop(soil=soil)
+
+        optional keyword arguments and their default values:
+        'Zr': 500,          # Planting depth [mm]
+        'sw_MPa':-1.5,      # Plant wilting point [MPa]
+        's_star_MPa':-0.2,  # Water potential for max T
+        'KC_MAX':1.2,       # Maximum crop coefficient
+        'LAI_MAX':3.0,      # Max Leaf Area Index [m2/m2]
+        'T_MAX':4.0         # Max Crop Water Use [mm/day]
+    
+        """
+        
+        def __init__(self, const_kc=0.7, *args, **kwargs):
+            self.const_kc = const_kc
+            super(StaticCrop, self).__init__(*args, **kwargs)
+
+
+        def calc_kc(self, day_of_season):
+            """ 
+            Calculates crop coefficient that does NOT vary throughout the season
+            """
+            return self.const_kc

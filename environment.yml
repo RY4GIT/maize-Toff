@@ -6,5 +6,3 @@ dependencies:
   - scipy
   - matplotlib
   - seaborn
-  - proplot
-  - nose

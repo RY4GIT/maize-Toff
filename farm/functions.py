@@ -27,7 +27,7 @@ import copy
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
-import proplot as plot
+# import proplot as plot
 import functools
 from .climate import Climate
 from .model import CropModel
