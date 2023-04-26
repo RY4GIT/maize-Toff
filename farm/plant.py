@@ -276,14 +276,6 @@ class StaticCrop(Crop):
         """ Creates a StaticCrop class that inherits from Crop and overrides the calc_kc method.
 
         Usage: crop = StaticCrop(soil=soil)
-
-        optional keyword arguments and their default values:
-        'Zr': 500,          # Planting depth [mm]
-        'sw_MPa':-1.5,      # Plant wilting point [MPa]
-        's_star_MPa':-0.2,  # Water potential for max T
-        'KC_MAX':1.2,       # Maximum crop coefficient
-        'LAI_MAX':3.0,      # Max Leaf Area Index [m2/m2]
-        'T_MAX':4.0         # Max Crop Water Use [mm/day]
     
         """
         
