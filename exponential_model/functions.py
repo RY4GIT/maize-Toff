@@ -9,7 +9,7 @@ def exp_model(t, delta_theta, theta_w, tau):
     return delta_theta * np.exp(-t/tau) + theta_w
 
 
-def calc_dSdt(cropmodel_output):
+def calc_dSdt(cropmodel_output, precip_thresh, dSdt_positive_thresh, dSdt_noise_thresh, plot_results=False):
     """
     Function to detect drydown and calculate dS/dt
     [input]
@@ -19,11 +19,7 @@ def calc_dSdt(cropmodel_output):
     drydown_events: dataframe of cropmodel output, with calculated ds/dt & event-wise list 
     """
 
-    precip_thresh = 2
-    # Any positive increment smaller than 5% of the observed range of soil moisture at the site is excluded if it would otherwise truncate a drydown. 
-    dSdt_thresh = 0.01 #(cropmodel_output.s.max() - cropmodel_output.s.min()) * 0.05
-    # To avoid noise creating spurious drydowns, identified drydowns were excluded from the analysis when the positive increment preceding the drydown was less than two times the target unbiased root-mean-square difference for SMAP observations (0.08).
-    target_rmsd = 0.08
+    ############# Calculate dSdt ###############
 
     precip_mask = cropmodel_output['R'].where(cropmodel_output['R'] < precip_thresh)
     no_sm_record_but_precip_present =  cropmodel_output['R'].where((precip_mask.isnull()) & (cropmodel_output['s'].isnull()))
@@ -49,10 +45,11 @@ def calc_dSdt(cropmodel_output):
 
     cropmodel_output.loc[cropmodel_output['s'].shift(-1).isna(), 'dSdt'] = np.nan
 
-    negative_increments = cropmodel_output.dSdt < 0
+    ############# Define drydown events ###############
 
+    negative_increments = cropmodel_output.dSdt < 0
+    positive_increments = cropmodel_output.dSdt > dSdt_positive_thresh
     # To avoid noise creating spurious drydowns, identified drydowns were excluded from the analysis when the positive increment preceding the drydown was less than two times the target unbiased root-mean-square difference for SMAP observations (0.08).
-    positive_increments = cropmodel_output.dSdt > target_rmsd
 
     # Negative dSdt preceded with positive dSdt
     cropmodel_output['event_start'] = negative_increments.values & np.concatenate(([False], positive_increments[:-1]))
@@ -66,7 +63,7 @@ def calc_dSdt(cropmodel_output):
             for j in range(i+1, cropmodel_output.shape[0]):
                 if np.isnan(cropmodel_output['dS'][j]):
                     None
-                if cropmodel_output['dS'][j] >= dSdt_thresh or cropmodel_output['R'][j] > precip_thresh:
+                if cropmodel_output['dS'][j] >= dSdt_noise_thresh or cropmodel_output['R'][j] > precip_thresh:
                     # Any positive increment smaller than 5% of the observed range of soil moisture at the site is excluded (if there is not precipitation) if it would otherwise truncate a drydown. 
                     event_end[j] = True
                     break
@@ -76,13 +73,17 @@ def calc_dSdt(cropmodel_output):
     cropmodel_output['event_end'] = cropmodel_output['event_end'].shift(-1)
     cropmodel_output = cropmodel_output[:-1]
 
-    fig, (ax11, ax12) = plt.subplots(2,1, figsize=(20, 5))
-    cropmodel_output.s.plot(ax=ax11, alpha=0.5)
-    ax11.scatter(cropmodel_output.s[cropmodel_output['event_start']].index, cropmodel_output.s[cropmodel_output['event_start']].values, color='orange', alpha=0.5)
-    ax11.scatter(cropmodel_output.s[cropmodel_output['event_end']].index, cropmodel_output.s[cropmodel_output['event_end']].values, color='orange', marker='x', alpha=0.5)
-    cropmodel_output.R.plot(ax=ax12, alpha=0.5)
-    # fig.savefig(os.path.join(output_path2, f'{target_station}_timeseries.png'))
+    ############# Plot results ###############
 
+    if plot_results: 
+        fig, (ax11, ax12) = plt.subplots(2,1, figsize=(20, 5))
+        cropmodel_output.s.plot(ax=ax11, alpha=0.5)
+        ax11.scatter(cropmodel_output.s[cropmodel_output['event_start']].index, cropmodel_output.s[cropmodel_output['event_start']].values, color='orange', alpha=0.5)
+        ax11.scatter(cropmodel_output.s[cropmodel_output['event_end']].index, cropmodel_output.s[cropmodel_output['event_end']].values, color='orange', marker='x', alpha=0.5)
+        cropmodel_output.R.plot(ax=ax12, alpha=0.5)
+        # fig.savefig(os.path.join(output_path2, f'{target_station}_timeseries.png'))
+
+    ############# Preparing output dataframe ###############
     start_indices = cropmodel_output[cropmodel_output['event_start']].index
     end_indices = cropmodel_output[cropmodel_output['event_end']].index
     cropmodel_output['dSdt(t-1)'] = cropmodel_output.dSdt.shift(+1)
@@ -93,6 +94,8 @@ def calc_dSdt(cropmodel_output):
                 'soil_moisture': list(cropmodel_output.loc[start_index:end_index, 's'].values),
                 'precip': list(cropmodel_output.loc[start_index:end_index, 'R'].values),
                 'delta_theta': cropmodel_output.loc[start_index, 'dSdt(t-1)'],
+                'LAI': list(cropmodel_output.loc[start_index:end_index, 'LAI'].values),
+                'ET': list(cropmodel_output.loc[start_index:end_index, 'ET'].values),
                 } 
                 for start_index, end_index in zip(start_indices, end_indices)]
     event_df = pd.DataFrame(event_data)
@@ -165,32 +168,6 @@ def plot_expfit_results(i, drydown_event):
     axes.set_xlabel('Date')
     axes.set_ylabel('Soil Moisture')
     axes.set_xlim([drydown_event['event_start'], drydown_event['event_end']])
-    # Rotate the x tick labels
-    # axes.tick_params(axis='x', rotation=45)
-    # except:
-    #     None
-
-    # fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, sharey=True, figsize=(10, 20))
-    # for index, drydown_event in drydown_and_params.iterrows():
-
-        # x = np.arange(drydown_event['event_start'], drydown_event['event_end'], 1)
-        # y = np.asarray(drydown_event['soil_moisture'])
-        # y_opt = np.asarray(drydown_event['opt_drydown'])
-        # r_squared = drydown_event['r_squared']
-        # tau = drydown_event['tau']
-        # try:
-        #     ax_drydown_event = int(index / num_cols)
-        #     ax_col = index % num_cols
-        #     axes[ax_drydown_event, ax_col].scatter(x, y)
-        #     axes[ax_drydown_event, ax_col].plot(x[~np.isnan(y)], y_opt, alpha=.7)
-        #     axes[ax_drydown_event, ax_col].set_title(f'Event {index} (R2={r_squared:.2f}; tau={tau:.2f})')
-        #     axes[ax_drydown_event, ax_col].set_xlabel('Date')
-        #     axes[ax_drydown_event, ax_col].set_ylabel('Soil Moisture')
-        #     axes[ax_drydown_event, ax_col].set_xlim([drydown_event['event_start'], drydown_event['event_end']])
-        #     # Rotate the x tick labels
-        #     axes[ax_drydown_event, ax_col].tick_params(axis='x', rotation=45)
-        # except:
-        #     continue
     fig.show()
 
 
