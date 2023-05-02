@@ -100,6 +100,7 @@ def calc_dSdt(cropmodel_output, precip_thresh, dSdt_positive_thresh, dSdt_noise_
                 for start_index, end_index in zip(start_indices, end_indices)]
     event_df = pd.DataFrame(event_data)
 
+    # Only retain events more than 4 days
     drydown_events = event_df[event_df['soil_moisture'].apply(lambda x: pd.notna(x).sum()) >= 4].copy()
     drydown_events = drydown_events.reset_index(drop=True)
 
