@@ -89,7 +89,8 @@ class CropModel():
             s0=0.3,
             planting_date=100,
             t_before=60,
-            t_after=7):
+            t_after=7,
+            t_warmup=365):
         """ Runs the ecohydro crop model.
 
             Inputs:
@@ -109,26 +110,28 @@ class CropModel():
             The model then runs for a total of t_before + crop.lgp + t_after days
 
         """
+        self.t_warmup = t_warmup
         self.planting_date = planting_date
-        self.n_days = t_before + self.crop.lgp + t_after
+        self.n_days = t_warmup + t_before + self.crop.lgp + t_after
         self.pre_allocate()
 
-        self.doy_start = self.planting_date - t_before
+        self.doy_start = self.planting_date - t_before - t_warmup
         # Make sure we don't back into the prior year.
-        if self.doy_start <= 0:
-            self.doy_start = 365 + self.doy_start
+        # if self.doy_start <= 0:
+        #     self.doy_start = 365 + self.doy_start
 
         self.dos_end = self.planting_date + self.crop.lgp + t_after
 
         # Force doy to be in [1,365]:
         doy = np.arange(self.doy_start, self.doy_start + self.n_days)
-        while (doy - 365 > 0).any() == True:
-            doy = doy - 365 * ((doy - 365) > 0)
+        # while (doy - 365 > 0).any() == True:
+        #     doy = doy - 365 * ((doy - 365) > 0)
 
         self.doy_end = doy[-1:] # last doy of year of simulation.
 
         for t in range(self.n_days):
-            self.R[t] = self.climate.rainfall[doy[t]-1]
+            if t !=0:
+                self.R[t] = self.climate.rainfall[doy[t]-1]
 
         self.doy = doy
 
@@ -232,7 +235,7 @@ class CropModel():
             return self.output()
 
     def output(self):
-        return DataFrame({ 
+        df_output0 = DataFrame({ 
             'kc':self.kc,
             'LAI':self.LAI,
             'stress':self.stress,
@@ -247,3 +250,7 @@ class CropModel():
             'dos':self.dos,
             'doy':self.doy
         })
+        df_output = df_output0[self.t_warmup:]
+        df_output.reset_index(inplace=True)
+        return df_output
+# %%
