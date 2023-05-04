@@ -130,8 +130,10 @@ def fit_exp_model(drydown_event, min_sm_values_at_the_pt=0.03):
     y = soil_moisture_subset[~np.isnan(soil_moisture_subset)]
     
     # exp_model(t, delta_theta, theta_w, tau):
-    bounds  = [(0, min_sm_values_at_the_pt, 0), (2*soil_moisture_range, soil_moisture_subset_min, np.inf)]
-    p0      = [0.5*soil_moisture_range, (soil_moisture_subset_min+min_sm_values_at_the_pt)/2, 1]
+    # bounds  = [(0, min_sm_values_at_the_pt, 0), (np.inf, soil_moisture_subset_min, np.inf)]
+    # p0      = [0.5*soil_moisture_range, (soil_moisture_subset_min+min_sm_values_at_the_pt)/2, 1]
+    bounds  = [(0, min_sm_values_at_the_pt-0.01, 0), (np.inf, min_sm_values_at_the_pt+0.01, np.inf)]
+    p0      = [0.5*soil_moisture_range, min_sm_values_at_the_pt, 1]
 
     try: 
         popt, pcov = curve_fit(f=exp_model, xdata=x, ydata=y, p0=p0, bounds=bounds)
@@ -162,13 +164,16 @@ def plot_expfit_results(i, drydown_event):
     y_opt = np.asarray(drydown_event['opt_drydown'])
     r_squared = drydown_event['r_squared']
     tau = drydown_event['tau']
+    theta_w = drydown_event['theta_w']
+    delta_theta = drydown_event['delta_theta']
     # try:
     axes.scatter(x, y)
     axes.plot(x[~np.isnan(y)], y_opt, alpha=.7)
-    axes.set_title(f'Event {i} (R2={r_squared:.2f}; tau={tau:.2f})')
+    axes.set_title(f'Event {i} (R2={r_squared:.2f}; tau={tau:.2f}\ntheta_w={theta_w:.2f}; delta_theta={delta_theta:.2f})', fontsize = 10)
     axes.set_xlabel('Date')
     axes.set_ylabel('Soil Moisture')
     axes.set_xlim([drydown_event['event_start'], drydown_event['event_end']])
+    fig.tight_layout()
     fig.show()
 
 

@@ -118,3 +118,4 @@ venv.bak/
 .Rproj.user
 /submitted
 /data/archived
+/data/Output/*
