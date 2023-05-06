@@ -1,7 +1,7 @@
 from .climate import Climate
 from .soil import Soil
 from .plant import Crop, StaticCrop
-from .model import CropModel
+from .model import CropModel, ZeroECropModel
 
 __all__ = [
     Climate,
@@ -9,5 +9,6 @@ __all__ = [
     Crop,
     Soil,
     CropModel,
-    StaticCrop
+    StaticCrop,
+    ZeroECropModel
 ]

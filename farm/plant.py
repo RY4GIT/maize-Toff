@@ -279,8 +279,9 @@ class StaticCrop(Crop):
     
         """
         
-        def __init__(self, const_kc=0.7, *args, **kwargs):
+        def __init__(self, const_kc=0.7, q_t=1, *args, **kwargs):
             self.const_kc = const_kc
+            self.q_t = q_t
             super(StaticCrop, self).__init__(*args, **kwargs)
 
 
@@ -289,3 +290,29 @@ class StaticCrop(Crop):
             Calculates crop coefficient that does NOT vary throughout the season
             """
             return self.const_kc
+        
+        def calc_T(self, s, LAI=None, kc=None):
+            """ Calculates Transpiration variable as a stepwise
+                linear function. Will use LAI value if both LAI 
+                and kc are provided.
+            
+            Usage: calc_T(s, LAI, kc)
+            
+                s = relative soil moisture [0-1]
+                LAI = leaf area index [m2/m2]
+                kc = crop coefficient [-].
+
+            Note: Either LAI or kc must be provided.
+
+            """
+            #if not LAI and not kc:
+                #raise(ValueError, "Function requires either LAI or kc to be set.")
+            if LAI:
+                kc = self._kc_from_LAI(LAI)
+            if kc:
+                if s>=self.s_star:
+                    return self.calc_T_MAX(kc)
+                elif s>=self.sw:
+                    return pow((s-self.sw)/(self.s_star-self.sw), self.q_t)*self.calc_T_MAX(kc)
+                else:
+                    return 0

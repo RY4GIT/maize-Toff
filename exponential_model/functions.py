@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def exp_model(t, delta_theta, theta_w, tau):
-    return delta_theta * np.exp(-t/tau) + theta_w
+def exp_model(t, delta_theta, theta_w, tau, t_sstar):
+    return delta_theta * np.exp(-(t-t_sstar)/tau) + theta_w
 
 
 def calc_dSdt(cropmodel_output, precip_thresh, dSdt_positive_thresh, dSdt_noise_thresh, plot_results=False):
@@ -129,11 +129,11 @@ def fit_exp_model(drydown_event, min_sm_values_at_the_pt=0.03):
     x = t[~np.isnan(soil_moisture_subset)]
     y = soil_moisture_subset[~np.isnan(soil_moisture_subset)]
     
-    # exp_model(t, delta_theta, theta_w, tau):
+    # exp_model(t, delta_theta, theta_w, tau, t_sstar):
     # bounds  = [(0, min_sm_values_at_the_pt, 0), (np.inf, soil_moisture_subset_min, np.inf)]
     # p0      = [0.5*soil_moisture_range, (soil_moisture_subset_min+min_sm_values_at_the_pt)/2, 1]
-    bounds  = [(0, min_sm_values_at_the_pt-0.01, 0), (np.inf, min_sm_values_at_the_pt+0.01, np.inf)]
-    p0      = [0.5*soil_moisture_range, min_sm_values_at_the_pt, 1]
+    bounds  = [(0, min_sm_values_at_the_pt-0.01, 0, -np.inf), (np.inf, min_sm_values_at_the_pt+0.01, np.inf, np.inf)]
+    p0      = [0.5*soil_moisture_range, min_sm_values_at_the_pt, 1, 0]
 
     try: 
         popt, pcov = curve_fit(f=exp_model, xdata=x, ydata=y, p0=p0, bounds=bounds)
@@ -144,7 +144,7 @@ def fit_exp_model(drydown_event, min_sm_values_at_the_pt=0.03):
         ss_res = np.sum(residuals ** 2)
         ss_tot = np.sum((y - np.nanmean(y)) ** 2)
         r_squared = 1 - (ss_res / ss_tot)
-        exp_fit_params = {'event_start': start_date, 'event_end': end_date, 'delta_theta': popt[0], 'theta_w': popt[1], 'tau': popt[2], 'r_squared': r_squared, 'opt_drydown': y_opt.tolist()}
+        exp_fit_params = {'event_start': start_date, 'event_end': end_date, 'delta_theta': popt[0], 'theta_w': popt[1], 'tau': popt[2], 't_sstar': popt[3], 'r_squared': r_squared, 'opt_drydown': y_opt.tolist()}
     except:
         print('Error raised')
     return exp_fit_params
@@ -166,10 +166,11 @@ def plot_expfit_results(i, drydown_event):
     tau = drydown_event['tau']
     theta_w = drydown_event['theta_w']
     delta_theta = drydown_event['delta_theta']
+    t_sstar = drydown_event['t_sstar']
     # try:
     axes.scatter(x, y)
     axes.plot(x[~np.isnan(y)], y_opt, alpha=.7)
-    axes.set_title(f'Event {i} (R2={r_squared:.2f}; tau={tau:.2f}\ntheta_w={theta_w:.2f}; delta_theta={delta_theta:.2f})', fontsize = 10)
+    axes.set_title(f'Event {i} (R2={r_squared:.2f}; tau={tau:.2f}\ntheta_w={theta_w:.2f}; delta_theta={delta_theta:.2f}; t_sstar={t_sstar:.2f})', fontsize = 10)
     axes.set_xlabel('Date')
     axes.set_ylabel('Soil Moisture')
     axes.set_xlim([drydown_event['event_start'], drydown_event['event_end']])
